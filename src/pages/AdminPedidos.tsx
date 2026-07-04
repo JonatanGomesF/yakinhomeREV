@@ -176,18 +176,51 @@ export default function AdminPedidos() {
   const [selected, setSelected] = useState<Order | null>(null);
   const [updating, setUpdating] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<"kanban" | "table">("kanban");
+  const printedOrderIdsRef = useRef<Set<number>>(new Set());
+  const hasLoadedInitialOrdersRef = useRef(false);
 
-  const load = async () => {
+  const notifyNewOrder = (order: Order) => {
+    if (printedOrderIdsRef.current.has(order.id)) return;
+
+    printedOrderIdsRef.current.add(order.id);
+    playBeep();
+    speakAlert();
+    printUsbText(formatOrderReceipt(order)).catch((error) => {
+      console.error("Erro ao imprimir pedido:", error);
+    });
+  };
+
+  const load = async (options?: { notifyNewOrders?: boolean }) => {
     setLoading(true);
     let q = supabase.from("orders").select("*").order("created_at", { ascending: false }).limit(100);
     if (viewMode === "table" && filterStatus !== "all") q = q.eq("status", filterStatus);
     const { data } = await q;
-    setOrders(data ?? []);
+    const loadedOrders = data ?? [];
+    setOrders(loadedOrders);
+
+    if (!hasLoadedInitialOrdersRef.current) {
+      loadedOrders.forEach((order) => printedOrderIdsRef.current.add(order.id));
+      hasLoadedInitialOrdersRef.current = true;
+    } else if (options?.notifyNewOrders) {
+      loadedOrders
+        .filter((order) => !printedOrderIdsRef.current.has(order.id))
+        .reverse()
+        .forEach(notifyNewOrder);
+    }
+
     setLoading(false);
   };
 
   useEffect(() => {
     load();
+  }, [filterStatus, viewMode]);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      load({ notifyNewOrders: true });
+    }, 8000);
+
+    return () => window.clearInterval(interval);
   }, [filterStatus, viewMode]);
 
   useEffect(() => {
@@ -203,11 +236,7 @@ export default function AdminPedidos() {
               if (prev.some((o) => o.id === newOrder.id)) return prev;
               return [newOrder, ...prev];
             });
-            playBeep();
-            speakAlert();
-            printUsbText(formatOrderReceipt(newOrder)).catch((error) => {
-              console.error("Erro ao imprimir pedido:", error);
-            });
+            notifyNewOrder(newOrder);
             // if the new order starts in a timed stage, schedule it
             if (STAGE_DURATIONS[newOrder.status]) scheduleAutoProgress(newOrder.id, newOrder.status);
           } else if (payload.eventType === "UPDATE") {
@@ -360,7 +389,7 @@ export default function AdminPedidos() {
             </button>
           </div>
 
-          <button onClick={load} className="p-2 rounded-xl border border-white/[0.08] text-white/40 hover:text-white hover:border-white/20 transition-all cursor-pointer">
+          <button onClick={() => load()} className="p-2 rounded-xl border border-white/[0.08] text-white/40 hover:text-white hover:border-white/20 transition-all cursor-pointer">
             <RefreshCw size={15} className={loading ? "animate-spin" : ""} />
           </button>
         </div>
