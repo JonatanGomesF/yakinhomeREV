@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "../services/supabase";
+import { printUsbText } from "../services/usbPrinter";
 import AdminLayout from "../components/AdminLayout";
 import {
   RefreshCw,
@@ -21,7 +22,14 @@ import {
   XCircle,
 } from "lucide-react";
 
-type OrderItem = { name: string; size?: string; quantity: number; price: number };
+type OrderItem = {
+  name: string;
+  size?: string;
+  quantity: number;
+  price: number;
+  extras?: Array<{ name: string; price: number }>;
+  observation?: string;
+};
 type Order = {
   id: number;
   customer_name: string;
@@ -115,6 +123,51 @@ const STATUS_ICONS: Record<string, React.ComponentType<any>> = {
   cancelled: XCircle,
 };
 
+function money(value: number) {
+  return `R$ ${Number(value || 0).toFixed(2)}`;
+}
+
+function formatOrderReceipt(order: Order) {
+  const createdAt = order.created_at ? new Date(order.created_at) : new Date();
+  const lines = [
+    "YAKINHOME",
+    "NOVO PEDIDO",
+    "------------------------------",
+    `Pedido: #${order.id}`,
+    `Data: ${createdAt.toLocaleString("pt-BR")}`,
+    "",
+    `Cliente: ${order.customer_name}`,
+    `WhatsApp: ${order.customer_phone}`,
+    `Endereco: ${order.street}, ${order.number}`,
+  ];
+
+  if (order.district) lines.push(`Bairro: ${order.district}`);
+
+  lines.push("", "ITENS", "------------------------------");
+
+  (order.items ?? []).forEach((item) => {
+    lines.push(`${item.quantity}x ${item.name}${item.size ? ` (${item.size})` : ""}`);
+
+    if (item.extras?.length) {
+      item.extras.forEach((extra) => {
+        lines.push(`  + ${extra.name} ${money(extra.price)}`);
+      });
+    }
+
+    if (item.observation) lines.push(`  Obs: ${item.observation}`);
+    lines.push(`  Subtotal: ${money(item.price * item.quantity)}`, "");
+  });
+
+  lines.push("------------------------------");
+  lines.push(`Pagamento: ${order.payment_method}`);
+  if (order.change_for) lines.push(`Troco para: ${money(order.change_for)}`);
+  if (order.notes) lines.push(`Obs gerais: ${order.notes}`);
+  lines.push(`TOTAL: ${money(order.total)}`);
+  lines.push("------------------------------", "");
+
+  return lines.join("\n");
+}
+
 export default function AdminPedidos() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -152,6 +205,9 @@ export default function AdminPedidos() {
             });
             playBeep();
             speakAlert();
+            printUsbText(formatOrderReceipt(newOrder)).catch((error) => {
+              console.error("Erro ao imprimir pedido:", error);
+            });
             // if the new order starts in a timed stage, schedule it
             if (STAGE_DURATIONS[newOrder.status]) scheduleAutoProgress(newOrder.id, newOrder.status);
           } else if (payload.eventType === "UPDATE") {

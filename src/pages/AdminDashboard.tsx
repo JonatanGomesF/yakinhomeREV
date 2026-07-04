@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../services/supabase";
 import AdminLayout from "../components/AdminLayout";
+import RevenueGraph from "../components/RevenueGraph";
 import {
   ShoppingBag,
   Users,
@@ -77,10 +78,6 @@ export default function AdminDashboard() {
     setToggling(false);
   };
 
-  // ── Gráfico SVG ──
-  const maxRevenue = Math.max(...chart.map((d) => d.revenue), 1);
-  const CHART_H = 80;
-
   const metrics = [
     { label: "Pedidos Hoje",    value: todayOrders,              Icon: ShoppingBag, color: "#c0261a" },
     { label: "Receita Hoje",    value: `R$ ${todayRevenue.toFixed(2)}`, Icon: TrendingUp, color: "#16a34a" },
@@ -141,40 +138,8 @@ export default function AdminDashboard() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
-
-        {/* ── Gráfico 7 dias ── */}
-        <div className="rounded-2xl p-5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="text-white font-black text-sm">Receita — Últimos 7 dias</h2>
-            <span className="text-white/25 text-[10px] font-semibold">
-              Total: R$ {chart.reduce((s, d) => s + Number(d.revenue), 0).toFixed(2)}
-            </span>
-          </div>
-
-          {chart.length === 0 ? (
-            <div className="flex items-center justify-center h-24 text-white/20 text-xs">Sem dados ainda</div>
-          ) : (
-            <div className="flex items-end gap-2.5 h-24">
-              {chart.map((d) => {
-                const h = Math.max((Number(d.revenue) / maxRevenue) * CHART_H, 4);
-                const dateLabel = new Date(d.day + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
-                return (
-                  <div key={d.day} className="flex flex-col items-center gap-1.5 flex-1 group">
-                    <div className="text-white/0 group-hover:text-white/60 text-[9px] font-bold transition-colors">
-                      R${Number(d.revenue).toFixed(0)}
-                    </div>
-                    <div
-                      className="w-full rounded-t-lg transition-all duration-300 group-hover:opacity-80 cursor-default"
-                      style={{ height: `${h}px`, background: "linear-gradient(to top, #c0261a, #e8321e)", minHeight: "4px" }}
-                    />
-                    <span className="text-white/30 text-[9px] font-semibold">{dateLabel}</span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+      <div className="grid grid-cols-1 gap-4">
+        <RevenueGraph data={chart} />
 
         {/* ── Pedidos recentes ── */}
         <div className="rounded-2xl p-5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
