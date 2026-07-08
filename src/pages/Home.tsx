@@ -1,13 +1,19 @@
 
 import Hero from "../components/Hero";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ProductCard from "../components/ProductCard";
 import PromotionBanner from "../components/PromotionBanner";
 import ProductModal from "../components/ProductModal";
 import { useCart } from "../context/CartContext";
 import { usePromotions } from "../hooks/usePromotions";
-import { getProductAvailability } from "../lib/productAvailability";
-import { products, type Product } from "../data/products";
+import {
+  fetchProductAvailability,
+  getProductAvailability,
+  PRODUCT_AVAILABILITY_EVENT,
+  subscribeProductAvailability,
+} from "../lib/productAvailability";
+import { getMenuCatalog } from "../lib/menuCatalog";
+import type { Product } from "../data/products";
 import { Phone, Clock, MapPin } from "lucide-react";
 
 // Local Yakisoba Assets for the About Us Row
@@ -23,15 +29,37 @@ export default function Home() {
   const promotions = usePromotions();
   const [selectedProduct, setSelectedProduct] =
     useState<Product | null>(null);
+  const [catalog, setCatalog] = useState(() => getMenuCatalog());
+  const [availability, setAvailability] = useState(() => getProductAvailability());
 
   const [modalOpen, setModalOpen] =
     useState(false);
 
-  const availability = getProductAvailability();
-  const availableProducts = products.map((product) => ({
+  const availableProducts = catalog.products.map((product) => ({
     ...product,
     available: availability[product.id] !== false,
   }));
+
+  useEffect(() => {
+    const updateCatalog = () => setCatalog(getMenuCatalog());
+    const updateAvailability = () => setAvailability(getProductAvailability());
+    const unsubscribeAvailability = subscribeProductAvailability(updateAvailability);
+
+    fetchProductAvailability().then(setAvailability);
+
+    window.addEventListener("storage", updateCatalog);
+    window.addEventListener("storage", updateAvailability);
+    window.addEventListener("yakinhome-menu-catalog-updated", updateCatalog);
+    window.addEventListener(PRODUCT_AVAILABILITY_EVENT, updateAvailability);
+
+    return () => {
+      window.removeEventListener("storage", updateCatalog);
+      window.removeEventListener("storage", updateAvailability);
+      window.removeEventListener("yakinhome-menu-catalog-updated", updateCatalog);
+      window.removeEventListener(PRODUCT_AVAILABILITY_EVENT, updateAvailability);
+      unsubscribeAvailability();
+    };
+  }, []);
 
   // Form states
   const [name, setName] = useState("");
@@ -136,28 +164,44 @@ export default function Home() {
           </p>
         </div>
 
-        <div className="grid gap-3 grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-          {availableProducts.map((product) => {
-            const promotion = promotions.find(
-              (p) => p.product_id === product.id && p.active
-            );
+        <div className="space-y-12">
+          {catalog.categories.map((category) => {
+            const categoryProducts = availableProducts.filter((product) => product.categoryId === category.id);
+            if (categoryProducts.length === 0) return null;
 
             return (
-              <ProductCard
-                key={product.id}
-                product={{
-                  ...product,
-                  promotionActive: !!promotion,
-                  promotionalPrice: promotion
-                    ? product.price - promotion.discount
-                    : undefined,
-                }}
-                onAddToCart={addToCart}
-                onOpenProduct={(product) => {
-                  setSelectedProduct(product);
-                  setModalOpen(true);
-                }}
-              />
+              <div key={category.id} className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <h3 className="text-xl md:text-2xl font-black text-gray-900 tracking-tight">{category.name}</h3>
+                  <div className="h-px flex-1 bg-gray-200" />
+                </div>
+
+                <div className="grid gap-3 grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                  {categoryProducts.map((product) => {
+                    const promotion = promotions.find(
+                      (p) => p.product_id === product.id && p.active
+                    );
+
+                    return (
+                      <ProductCard
+                        key={product.id}
+                        product={{
+                          ...product,
+                          promotionActive: !!promotion,
+                          promotionalPrice: promotion
+                            ? product.price - promotion.discount
+                            : undefined,
+                        }}
+                        onAddToCart={addToCart}
+                        onOpenProduct={(product) => {
+                          setSelectedProduct(product);
+                          setModalOpen(true);
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
             );
           })}
         </div>

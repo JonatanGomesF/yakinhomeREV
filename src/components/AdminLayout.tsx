@@ -13,6 +13,7 @@ import {
   ChefHat,
   MapPin,
   Printer,
+  Utensils,
 } from "lucide-react";
 
 type Props = { children: React.ReactNode };
@@ -20,6 +21,7 @@ type Props = { children: React.ReactNode };
 const navItems = [
   { to: "/admin",           label: "Dashboard",  Icon: LayoutDashboard },
   { to: "/admin/pedidos",   label: "Pedidos",     Icon: ShoppingBag     },
+  { to: "/admin/cardapio",  label: "Cardapio",    Icon: Utensils        },
   { to: "/admin/clientes",  label: "Clientes",    Icon: Users           },
   { to: "/admin/promocoes", label: "Promoções",   Icon: Tag             },
   { to: "/admin/estoque",   label: "Estoque",     Icon: Package         },

@@ -263,6 +263,25 @@ DROP POLICY IF EXISTS promotions_auth_all ON public.promotions;
 CREATE POLICY promotions_auth_all ON public.promotions
   FOR ALL TO authenticated USING (public.is_admin());
 
+-- Product availability: anon le (cardapio), apenas admins escrevem
+CREATE TABLE IF NOT EXISTS public.product_availability (
+  product_id INTEGER PRIMARY KEY,
+  available  BOOLEAN     NOT NULL DEFAULT true,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE public.product_availability ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS product_availability_read_anon ON public.product_availability;
+CREATE POLICY product_availability_read_anon ON public.product_availability
+  FOR SELECT TO anon USING (true);
+
+DROP POLICY IF EXISTS product_availability_auth_all ON public.product_availability;
+CREATE POLICY product_availability_auth_all ON public.product_availability
+  FOR ALL TO authenticated
+  USING (public.is_admin())
+  WITH CHECK (public.is_admin());
+
 -- ─────────────────────────────────────────────
 -- 10. REPLICAÇÃO REALTIME
 -- ─────────────────────────────────────────────
@@ -286,6 +305,22 @@ BEGIN
       AND c.relname = 'orders'
   ) THEN
     ALTER PUBLICATION supabase_realtime ADD TABLE public.orders;
+  END IF;
+END $$;
+
+-- Garante que a tabela product_availability esteja na replicacao realtime
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_rel pr
+    JOIN pg_class c ON c.oid = pr.prrelid
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    JOIN pg_publication p ON p.oid = pr.prpubid
+    WHERE p.pubname = 'supabase_realtime'
+      AND n.nspname = 'public'
+      AND c.relname = 'product_availability'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.product_availability;
   END IF;
 END $$;
 

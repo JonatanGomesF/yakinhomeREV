@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../services/supabase";
-import { products } from "../data/products";
+import { getMenuCatalog } from "../lib/menuCatalog";
 
 type Promotion = {
   id: number;
@@ -13,9 +13,17 @@ type Promotion = {
 
 export default function PromotionBanner() {
   const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const [products, setProducts] = useState(() => getMenuCatalog().products);
 
   useEffect(() => {
     loadPromotions();
+    const updateProducts = () => setProducts(getMenuCatalog().products);
+    window.addEventListener("storage", updateProducts);
+    window.addEventListener("yakinhome-menu-catalog-updated", updateProducts);
+    return () => {
+      window.removeEventListener("storage", updateProducts);
+      window.removeEventListener("yakinhome-menu-catalog-updated", updateProducts);
+    };
   }, []);
 
   async function loadPromotions() {

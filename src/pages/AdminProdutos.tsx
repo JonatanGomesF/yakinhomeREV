@@ -1,24 +1,49 @@
 import { useEffect, useState } from "react";
 import AdminLayout from "../components/AdminLayout";
 import type { Product } from "../data/products";
-import { products } from "../data/products";
+import { getMenuCatalog } from "../lib/menuCatalog";
 import {
+  fetchProductAvailability,
   getProductAvailability,
+  PRODUCT_AVAILABILITY_EVENT,
   setProductAvailability,
+  subscribeProductAvailability,
 } from "../lib/productAvailability";
 import { ToggleLeft, ToggleRight } from "lucide-react";
 
 export default function AdminProdutos() {
   const [availability, setAvailability] = useState<Record<number, boolean>>({});
+  const [products, setProducts] = useState(() => getMenuCatalog().products);
+  const [savingProductId, setSavingProductId] = useState<number | null>(null);
 
   useEffect(() => {
     setAvailability(getProductAvailability());
+    fetchProductAvailability().then(setAvailability);
+
+    const updateProducts = () => setProducts(getMenuCatalog().products);
+    const updateAvailability = () => setAvailability(getProductAvailability());
+    const unsubscribeAvailability = subscribeProductAvailability(updateAvailability);
+
+    window.addEventListener("storage", updateProducts);
+    window.addEventListener("storage", updateAvailability);
+    window.addEventListener("yakinhome-menu-catalog-updated", updateProducts);
+    window.addEventListener(PRODUCT_AVAILABILITY_EVENT, updateAvailability);
+
+    return () => {
+      window.removeEventListener("storage", updateProducts);
+      window.removeEventListener("storage", updateAvailability);
+      window.removeEventListener("yakinhome-menu-catalog-updated", updateProducts);
+      window.removeEventListener(PRODUCT_AVAILABILITY_EVENT, updateAvailability);
+      unsubscribeAvailability();
+    };
   }, []);
 
-  const toggleAvailability = (product: Product) => {
+  const toggleAvailability = async (product: Product) => {
     const nextState = !(availability[product.id] !== false);
-    const nextAvailability = setProductAvailability(product.id, nextState);
+    setSavingProductId(product.id);
+    const nextAvailability = await setProductAvailability(product.id, nextState);
     setAvailability(nextAvailability);
+    setSavingProductId(null);
   };
 
   return (
@@ -74,14 +99,15 @@ export default function AdminProdutos() {
 
                 <button
                   onClick={() => toggleAvailability(product)}
+                  disabled={savingProductId === product.id}
                   className={`inline-flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-black transition-all duration-200 ${
                     isAvailable
                       ? "bg-white/10 text-white border border-white/[0.08] hover:bg-white/15"
                       : "bg-red-600/15 text-red-100 border border-red-500/20 hover:bg-red-600/10"
-                  }`}
+                  } disabled:cursor-wait disabled:opacity-60`}
                 >
                   {isAvailable ? <ToggleLeft size={16} /> : <ToggleRight size={16} />}
-                  {isAvailable ? "Pausar" : "Liberar"}
+                  {savingProductId === product.id ? "Salvando..." : isAvailable ? "Pausar" : "Liberar"}
                 </button>
               </div>
             );
