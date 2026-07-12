@@ -260,7 +260,7 @@ export default function CheckoutDialog({ open, onOpenChange }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/75 flex items-center justify-center z-[999] p-4 backdrop-blur-sm animate-fade-in">
+    <div className="fixed inset-0 bg-black/75 flex items-center justify-center z-[999] p-2 sm:p-4 backdrop-blur-sm animate-fade-in">
       
       {isSuccess ? (
         /* Order Success State Screen */
@@ -284,23 +284,23 @@ export default function CheckoutDialog({ open, onOpenChange }: Props) {
       ) : (
         /* Checkout Form State */
         <div 
-          className="w-full max-w-md rounded-3xl p-6 space-y-5 relative shadow-2xl animate-scale-up"
+          className="w-full max-w-xl max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-xl p-4 sm:p-5 space-y-3 relative shadow-2xl animate-scale-up"
           style={{ background: "rgba(20,20,20,0.98)", border: "1px solid rgba(255,255,255,0.08)", backdropFilter: "blur(12px)" }}
         >
           {/* Close button */}
           <button
             onClick={() => onOpenChange(false)}
-            className="absolute top-4 right-4 text-white/30 hover:text-white transition-colors duration-200 cursor-pointer"
+            className="absolute top-3 right-3 text-white/30 hover:text-white transition-colors duration-200 cursor-pointer"
           >
             <X size={20} />
           </button>
 
           <div>
-            <h2 className="text-2xl font-black text-white tracking-tight">Finalizar Pedido</h2>
+            <h2 className="text-xl font-black text-white tracking-tight">Finalizar Pedido</h2>
             <p className="text-xs text-white/40 font-semibold mt-1">Preencha os detalhes para entrega rápida</p>
           </div>
 
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Nome Completo *</label>
               <input
@@ -347,7 +347,7 @@ export default function CheckoutDialog({ open, onOpenChange }: Props) {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3 sm:col-span-2">
               <div className="space-y-1.5">
                 <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Número *</label>
                 <input
@@ -397,7 +397,7 @@ export default function CheckoutDialog({ open, onOpenChange }: Props) {
             )}
           </div>
 
-          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-3 space-y-2">
+          <div className="rounded-lg border border-white/[0.06] bg-white/[0.03] p-3 space-y-1.5">
             <div className="flex items-center justify-between text-[11px] text-white/50 font-semibold">
               <span>Subtotal</span>
               <span>R$ {totalPrice.toFixed(2)}</span>
@@ -421,7 +421,7 @@ export default function CheckoutDialog({ open, onOpenChange }: Props) {
           <button
             onClick={send}
             disabled={isSending}
-            className="w-full bg-gradient-to-r from-[#c0261a] to-[#a31d12] hover:from-[#d93025] hover:to-[#c0261a] disabled:opacity-50 text-white py-3.5 rounded-xl font-bold transition-all duration-300 shadow-lg shadow-red-900/35 flex items-center justify-center gap-2 cursor-pointer text-sm font-sans"
+            className="w-full bg-gradient-to-r from-[#c0261a] to-[#a31d12] hover:from-[#d93025] hover:to-[#c0261a] disabled:opacity-50 text-white py-3 rounded-lg font-bold transition-all duration-300 shadow-lg shadow-red-900/35 flex items-center justify-center gap-2 cursor-pointer text-sm font-sans"
           >
             <MessageSquare size={16} />
             <span>{isSending ? "Processando..." : "Enviar pedido no WhatsApp"}</span>
